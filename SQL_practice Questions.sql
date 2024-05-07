@@ -43,4 +43,38 @@ else 'PROMOTED'
 END as status
 from cte
 
------ Problem 2 ------------
+------- Problem 2 ------------
+create table table_a
+(
+ empid int, empname varchar(50), 
+ salary int
+);
+
+create table table_b
+(
+ empid int, 
+ empname varchar(50), 
+ salary int
+);
+
+insert into table_a values(1,'AA',1000);
+insert into table_a values(2,'BB',300);
+insert into table_b values(2,'BB',400);
+insert into table_b values(3,'CC',100);
+
+SELECT * FROM TABLE_A;
+SELECT * FROM TABLE_B;
+
+with cte as (
+select coalesce(a.empid,b.empid) as empid, a.empname as e1,a.salary as s1,b.empname as e2,b.salary as s2
+from table_a a full outer join table_b b on a.empid=b.empid)
+
+select empid,
+case when e1 is null then e2
+else e1
+end as empname,
+case when s1 is null then s2
+else s1
+end as salary
+from cte
+
