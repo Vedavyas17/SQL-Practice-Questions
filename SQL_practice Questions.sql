@@ -145,7 +145,10 @@ cte4 as (select x,count(*) as c from cte3 group by x),
 
 cte5 as (select cte3.*, case when cte3.x= cte4.x then cte4.c end as t 
 		 from cte3,cte4 where cte4.c>=3)
-
+		 
+select service_name,min(t1),max(t2),status
+from cte5 where t is not null group by service_name,status
+	
 method-2:
 with cte as (
 select *, lag(status) over(order by updated_time) as prev_status from service_status
@@ -165,7 +168,5 @@ from cte2 group by group_key,service_name )
 -- select * from cte3
 select service_name,service_status,start_updated_time,end_updated_time from cte3 
 where extract(minute from (end_updated_time - start_updated_time))>=3;
-		 
-select service_name,min(t1),max(t2),status
-from cte5 where t is not null group by service_name,status
+
 
