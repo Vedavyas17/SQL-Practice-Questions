@@ -108,3 +108,44 @@ except
 select distance,source,destination
 from cte where s1 = destination and d1 = source and d = distance
 
+	-----------------problem 4--------------------------
+CREATE TABLE service_status (
+    service_name VARCHAR(50),
+    updated_time TIMESTAMP,
+    status VARCHAR(10)
+);
+INSERT INTO service_status (service_name, updated_time, status) VALUES 
+('hdfs', '2024-03-06 10:00:00', 'up'),
+('hdfs', '2024-03-06 10:01:00', 'up'),
+('hdfs', '2024-03-06 10:02:00', 'down'),
+('hdfs', '2024-03-06 10:03:00', 'down'),
+('hdfs', '2024-03-06 10:04:00', 'down'),
+('hdfs', '2024-03-06 10:05:00', 'down'),
+('hdfs', '2024-03-06 10:06:00', 'down'),
+('hdfs', '2024-03-06 10:07:00', 'up'),
+('hdfs', '2024-03-06 10:08:00', 'up'),
+('hdfs', '2024-03-06 10:09:00', 'down'),
+('hdfs', '2024-03-06 10:10:00', 'down');
+
+with cte as
+(select service_name,updated_time as t1, 
+lead(updated_time) over(partition by status order by updated_time) as t2,status
+-- EXTRACT(MINUTE FROM (lead(updated_time) over(partition by status order by updated_time)- updated_time)) as dif,
+-- row_number() over(partition by updated_time order by updated_time) as rn
+from service_status where status='down'),
+
+cte2 as(select cte.*,
+EXTRACT(MINUTE FROM (t2-(select min(t1) as m from cte))) as di,
+row_number() over(partition by cte.service_name) as r
+from cte),
+
+cte3 as (select service_name,t1,t2,status,(di-r) as x from cte2),
+
+cte4 as (select x,count(*) as c from cte3 group by x),
+
+cte5 as (select cte3.*, case when cte3.x= cte4.x then cte4.c end as t 
+		 from cte3,cte4 where cte4.c>=3)
+		 
+select service_name,min(t1),max(t2),status
+from cte5 where t is not null group by service_name,status
+
