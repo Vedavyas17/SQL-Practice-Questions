@@ -240,3 +240,38 @@ on c.win = k.k_no group by 1,2),
 cte2 as (select *,dense_rank() over(partition by region order by cnt desc) as d
 from cte1)
 select region,house,cnt as wins from cte2 where d=1
+--------------------- sql 8 by TechTFQ ----------------------
+drop table if exists job_skills;
+create table job_skills
+(
+	row_id		int,
+	job_role	varchar(20),
+	skills		varchar(20)
+);
+insert into job_skills values (1, 'Data Engineer', 'SQL');
+insert into job_skills values (2, null, 'Python');
+insert into job_skills values (3, null, 'AWS');
+insert into job_skills values (4, null, 'Snowflake');
+insert into job_skills values (5, null, 'Apache Spark');
+insert into job_skills values (6, 'Web Developer', 'Java');
+insert into job_skills values (7, null, 'HTML');
+insert into job_skills values (8, null, 'CSS');
+insert into job_skills values (9, 'Data Scientist', 'Python');
+insert into job_skills values (10, null, 'Machine Learning');
+insert into job_skills values (11, null, 'Deep Learning');
+insert into job_skills values (12, null, 'Tableau');
+
+select * from job_skills;
+
+with cte as (select *,
+sum(case when job_role is not null then 1 else 0 end) over(order by row_id) as new
+from job_skills)
+select row_id,first_value(job_role) over(partition by new order by row_id) as job_role,skills
+from cte
+
+-- method 2 using recursive cte
+with recursive cte as (
+select * from job_skills where row_id=1
+union
+select js.row_id, coalesce(js.job_role,cte.job_role),js.skills from cte join job_skills js on js.row_id=cte.row_id+1)
+select * from cte
