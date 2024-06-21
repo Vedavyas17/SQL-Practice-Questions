@@ -275,8 +275,44 @@ select * from job_skills where row_id=1
 union
 select js.row_id, coalesce(js.job_role,cte.job_role),js.skills from cte join job_skills js on js.row_id=cte.row_id+1)
 select * from cte
+--------------------SQL 9 TechTFQ------------------------------------------
+drop TABLE if exists orders;
+CREATE TABLE orders 
+(
+	customer_id 	INT,
+	dates 			DATE,
+	product_id 		INT
+);
+INSERT INTO orders VALUES
+(1, '2024-02-18', 101),
+(1, '2024-02-18', 102),
+(1, '2024-02-19', 101),
+(1, '2024-02-19', 103),
+(2, '2024-02-18', 104),
+(2, '2024-02-18', 105),
+(2, '2024-02-19', 101),
+(2, '2024-02-19', 106); 
 
---------------------SQL 11 Techtfq-----------------------------------------
+
+with cte as(select *,lead(product_id) over(partition by dates,customer_id) as ld from orders)
+(select dates,cast(product_id as text) from orders
+union
+select dates,case 
+ when product_id<=ld then concat(product_id,',',ld)
+ else concat(ld,',',product_id) end
+ as projects_id from cte where ld is not null)
+order by 1,2
+
+-- Solution:
+select dates, cast(product_id as varchar) as products 
+from orders
+union
+select dates, string_agg(cast(product_id as varchar),',') as products
+from orders
+group by customer_id, dates
+order by dates, products;
+
+--------------------SQL 11 TechTFQ-----------------------------------------
 drop table if exists hotel_ratings;
 create table hotel_ratings
 (
