@@ -275,3 +275,31 @@ select * from job_skills where row_id=1
 union
 select js.row_id, coalesce(js.job_role,cte.job_role),js.skills from cte join job_skills js on js.row_id=cte.row_id+1)
 select * from cte
+
+--------------------SQL 11 Techtfq-----------------------------------------
+drop table if exists hotel_ratings;
+create table hotel_ratings
+(
+	hotel 		varchar(30),
+	year		int,
+	rating 		decimal
+);
+insert into hotel_ratings values('Radisson Blu', 2020, 4.8);
+insert into hotel_ratings values('Radisson Blu', 2021, 3.5);
+insert into hotel_ratings values('Radisson Blu', 2022, 3.2);
+insert into hotel_ratings values('Radisson Blu', 2023, 3.8);
+insert into hotel_ratings values('InterContinental', 2020, 4.2);
+insert into hotel_ratings values('InterContinental', 2021, 4.5);
+insert into hotel_ratings values('InterContinental', 2022, 1.5);
+insert into hotel_ratings values('InterContinental', 2023, 3.8);
+
+select * from hotel_ratings;
+
+with cte as (select *,
+round(avg(rating) over(partition by hotel),2) as avg_rt,
+round(stddev(rating) over(partition by hotel),2) as std
+-- if we place order by year the results will vary
+from hotel_ratings),
+cte1 as(select *,round(abs(rating-avg_rt)/std,2) as final from cte)
+select hotel,year,rating from cte1 where final<1 
+
