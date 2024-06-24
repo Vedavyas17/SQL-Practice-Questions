@@ -1,3 +1,6 @@
+---------------Important ---------
+Amazon Interview Question - https://www.youtube.com/watch?v=d7pZNZbpdo8&t=22s
+	
 ----- Problem 1 ------------
 create table emp_2020
 (
@@ -339,3 +342,40 @@ from hotel_ratings),
 cte1 as(select *,round(abs(rating-avg_rt)/std,2) as final from cte)
 select hotel,year,rating from cte1 where final<1 
 
+------------------ Amazon Interview Question from TechTFQ ------------------------------------
+https://www.youtube.com/watch?v=d7pZNZbpdo8&t=22s
+drop table if exists emp_attendance;
+create table emp_attendance
+(
+	employee 	varchar(10),
+	dates 		date,
+	status 		varchar(20)
+);
+insert into emp_attendance values('A1', '2024-01-01', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-02', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-03', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-04', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-05', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-06', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-07', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-08', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-09', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-010', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-06', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-07', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-08', 'ABSENT');
+insert into emp_attendance values('A2', '2024-01-09', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-010', 'ABSENT');
+
+select * from emp_attendance;
+
+with cte as (select *,
+lag(status) over(partition by employee order by dates) as lg
+from emp_attendance),
+cte1 as(select *,sum(case when (status='ABSENT' and lg='PRESENT') then 1 
+when (status='PRESENT' and lg='ABSENT') then 1 else 0 end) 
+over(partition by employee order by dates) as flag from cte)
+
+select employee,min(dates) as from_date,max(dates) as to_date,status 
+from cte1 group by employee,flag,status order by 1,2,3
+	
