@@ -172,9 +172,9 @@ from cte2 group by group_key,service_name )
 select service_name,service_status,start_updated_time,end_updated_time from cte3 
 where extract(minute from (end_updated_time - start_updated_time))>=3;
 
-------------------------------------------------------------------
--- Ankit Bansal SQL Question from Accenture
-CREATE TABLE employees  (employee_id int,employee_name varchar(15), email_id varchar(15) );
+----------------Ankit Bansal SQL Question from Accenture-----------------------------------
+CREATE TABLE employees  (
+	employee_id int,employee_name varchar(15), email_id varchar(15) );
 delete from employees;
 INSERT INTO employees (employee_id,employee_name, email_id) VALUES ('101','Liam Alton', 'li.al@abc.com');
 INSERT INTO employees (employee_id,employee_name, email_id) VALUES ('102','Josh Day', 'jo.da@abc.com');
