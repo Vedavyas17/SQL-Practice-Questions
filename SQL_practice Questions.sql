@@ -379,3 +379,24 @@ over(partition by employee order by dates) as flag from cte)
 select employee,min(dates) as from_date,max(dates) as to_date,status 
 from cte1 group by employee,flag,status order by 1,2,3
 	
+-- Google SQL 𝐏𝐫𝐨𝐛𝐥𝐞𝐦 𝐒𝐭𝐚𝐭𝐞𝐦𝐞𝐧𝐭 --------------------
+-- Count the occurances of words "sql" and "pyspark" in all of the text files.
+
+create table google_files(
+file_name varchar,
+content varchar
+);
+
+insert into google_files(file_name , content) values('file1.txt', 'Google Uses SQL.')
+, ('file2.txt','Google Uses SQL and PySpark to fetch the Data.'),
+('file3.txt','Google Uses NoSQL DataBase and PySpark for processing of Data.')
+,('file4.txt','Writing code in PySpark is very easy.');
+
+select * from google_files;
+
+with cte as(select sum(case when content like '% SQL%' then 1 else 0 end) as sql,
+sum(case when content like '%PySpark%' then 1 else 0 end) as PySpark
+from google_files group by file_name)
+select 'SQL' as word ,sum(sql) as wordcount from cte
+union
+select 'PySpark' as word,sum(pyspark) as wordcount from cte
