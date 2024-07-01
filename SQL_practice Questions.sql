@@ -400,3 +400,33 @@ from google_files group by file_name)
 select 'SQL' as word ,sum(sql) as wordcount from cte
 union
 select 'PySpark' as word,sum(pyspark) as wordcount from cte
+
+---------------------Leetcode 3140--------------------------------------------------------
+use world;
+CREATE TABLE if Not exists Cinema (
+    seat_id INT PRIMARY KEY,
+    free BOOLEAN
+);
+
+Truncate table Cinema;
+insert into Cinema (seat_id, free) values ('1', '1');
+insert into Cinema (seat_id, free) values ('2', '0');
+insert into Cinema (seat_id, free) values ('3', '1');
+insert into Cinema (seat_id, free) values ('4', '1');
+insert into Cinema (seat_id, free) values ('5', '1');
+insert into Cinema (seat_id, free) values ('6', '0');
+insert into Cinema (seat_id, free) values ('7', '1');
+insert into Cinema (seat_id, free) values ('8', '1');
+insert into Cinema (seat_id, free) values ('9', '1');
+
+select * from cinema;
+
+with cte as (select *, lag(free) over(order by seat_id) as prev from cinema),
+cte1 as (select *,sum(case when free=0 and prev=1 then 1
+when free=1 and prev=0 then 1
+else 0 end) over(order by seat_id) as cnt from cte),
+cte2 as(select distinct min(seat_id) over(partition by cnt) as start, 
+max(seat_id) over(partition by cnt)as end,
+count(cnt) over(partition by cnt) as seats_count from cte1),
+cte3 as(select *,dense_rank() over(order by seats_count desc) as rnk from cte2)
+select * from cte3 where rnk=1
