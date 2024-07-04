@@ -461,3 +461,31 @@ select * from employee_managers;
 select e2.name,count(e2.name) from employee_managers e1 
 join employee_managers e2 on e1.manager=e2.id
 group by e2.name order by 2 desc
+
+----------------TechTFQ Day-15 (Very Imp & HARD)-------------------------------
+DROP TABLE IF EXISTS Friends;
+
+CREATE TABLE Friends
+(
+	Friend1 	VARCHAR(10),
+	Friend2 	VARCHAR(10)
+);
+INSERT INTO Friends VALUES ('Jason','Mary');
+INSERT INTO Friends VALUES ('Mike','Mary');
+INSERT INTO Friends VALUES ('Mike','Jason');
+INSERT INTO Friends VALUES ('Susan','Jason');
+INSERT INTO Friends VALUES ('John','Mary');
+INSERT INTO Friends VALUES ('Susan','Mary');
+
+select * from Friends;
+
+with cte as(select friend1,friend2 from friends
+union all
+select friend2,friend1 from friends)
+select distinct f.*,count(c1.friend2) as mutual
+from friends f
+left join cte c1 on f.friend1=c1.friend1
+and c1.friend2 in (
+	select friend2
+	from cte c2 where f.friend2=c2.friend1) group by 1,2 order by 1 
+
