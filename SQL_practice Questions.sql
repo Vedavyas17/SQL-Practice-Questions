@@ -488,4 +488,73 @@ left join cte c1 on f.friend1=c1.friend1
 and c1.friend2 in (
 	select friend2
 	from cte c2 where f.friend2=c2.friend1) group by 1,2 order by 1 
+	
+------------------------------TechTFQ Day17---------------------------------------------
+-- Given is user login table for , identify dates where a user has logged in for 5 or more consecutive days.
+-- Return the user id, start date, end date and no of consecutive days, sorting based on user id.
+-- If a user logged in consecutively 5 or more times but not spanning 5 days then they should be excluded.
+
+/*
+-- Output:
+USER_ID		START_DATE		END_DATE		CONSECUTIVE_DAYS
+1			10/03/2024		14/03/2024		5
+1 			25/03/2024		30/03/2024		6
+3 			01/03/2024		05/03/2024		5
+*/
+
+
+-- PostgreSQL Dataset
+drop table if exists user_login;
+create table user_login
+(
+	user_id		int,
+	login_date	date
+);
+insert into user_login values(1, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('06/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('10/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('11/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('12/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('13/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('14/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(1, to_date('20/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('25/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('26/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('27/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('28/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('29/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('30/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(2, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(2, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(2, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(2, to_date('04/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(3, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('05/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(4, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('04/03/2024','dd/mm/yyyy'));
+
+select * from user_login;
+
+with cte0 as (select distinct user_id,login_date from user_login order by 1),
+cte as(select *,extract(day from login_date)-
+			row_number() over(partition by user_id order by login_date) as ref
+from cte0),
+cte1 as(select *,count(ref) over(partition by user_id,ref) as total from cte)
+select user_id,min(login_date) as start,max(login_date) as end,total 
+from cte1 where total>=5 group by user_id,total
 
