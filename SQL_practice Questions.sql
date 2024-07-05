@@ -558,3 +558,48 @@ cte1 as(select *,count(ref) over(partition by user_id,ref) as total from cte)
 select user_id,min(login_date) as start,max(login_date) as end,total 
 from cte1 where total>=5 group by user_id,total
 
+--------------------TechTFQ Day18----------------------------------------------------
+-- Find out the employees who attended all compan events
+
+drop table if exists employees;
+create table employees
+(
+	id			int,
+	name		varchar(50)
+);
+insert into employees values(1, 'Lewis');
+insert into employees values(2, 'Max');
+insert into employees values(3, 'Charles');
+insert into employees values(4, 'Sainz');
+
+
+drop table if exists events;
+create table events
+(
+	event_name		varchar(50),
+	emp_id			int,
+	dates			date
+);
+insert into events values('Product launch', 1, to_date('01-03-2024','DD-MM-YYYY'));
+insert into events values('Product launch', 3, to_date('01-03-2024','DD-MM-YYYY'));
+insert into events values('Product launch', 4, to_date('01-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 2, to_date('02-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 2, to_date('03-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 3, to_date('02-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 4, to_date('02-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 3, to_date('04-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 2, to_date('04-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 4, to_date('04-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 4, to_date('05-03-2024','DD-MM-YYYY'));
+
+
+
+select * from employees;
+select * from events;
+
+with cte as(select distinct event_name,emp_id,name
+from events t1 join employees t2 on t1.emp_id=t2.id order by 2),
+cte1 as(select *,count(*) over(partition by emp_id,name) as cnt from cte)
+select distinct name as emp_name,cnt from cte1 
+where cnt=(select count(distinct(event_name)) from events)
+
