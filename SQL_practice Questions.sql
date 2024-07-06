@@ -602,4 +602,40 @@ from events t1 join employees t2 on t1.emp_id=t2.id order by 2),
 cte1 as(select *,count(*) over(partition by emp_id,name) as cnt from cte)
 select distinct name as emp_name,cnt from cte1 
 where cnt=(select count(distinct(event_name)) from events)
+	
+---------------Ankit Bansal Tredence-------------------------------------------------
+CREATE TABLE cinema (
+    seat_id INT PRIMARY KEY,
+    free int
+);
+delete from cinema;
+INSERT INTO cinema (seat_id, free) VALUES (1, 1);
+INSERT INTO cinema (seat_id, free) VALUES (2, 0);
+INSERT INTO cinema (seat_id, free) VALUES (3, 1);
+INSERT INTO cinema (seat_id, free) VALUES (4, 1);
+INSERT INTO cinema (seat_id, free) VALUES (5, 1);
+INSERT INTO cinema (seat_id, free) VALUES (6, 0);
+INSERT INTO cinema (seat_id, free) VALUES (7, 1);
+INSERT INTO cinema (seat_id, free) VALUES (8, 1);
+INSERT INTO cinema (seat_id, free) VALUES (9, 0);
+INSERT INTO cinema (seat_id, free) VALUES (10, 1);
+INSERT INTO cinema (seat_id, free) VALUES (11, 0);
+INSERT INTO cinema (seat_id, free) VALUES (12, 1);
+INSERT INTO cinema (seat_id, free) VALUES (13, 0);
+INSERT INTO cinema (seat_id, free) VALUES (14, 1);
+INSERT INTO cinema (seat_id, free) VALUES (15, 1);
+INSERT INTO cinema (seat_id, free) VALUES (16, 0);
+INSERT INTO cinema (seat_id, free) VALUES (17, 1);
+INSERT INTO cinema (seat_id, free) VALUES (18, 1);
+INSERT INTO cinema (seat_id, free) VALUES (19, 1);
+INSERT INTO cinema (seat_id, free) VALUES (20, 1);
 
+select * from cinema;
+
+with cte as(select *,seat_id-row_number() over(order by seat_id) as rn 
+			from cinema where free=1),
+cte1 as(select *,count(rn) over(partition by rn) as cnt from cte)
+select min(seat_id) as start,max(seat_id) as end,cnt
+from cte1 group by cnt,free,rn
+-- select seat_id
+-- from cte1 where cnt>1
