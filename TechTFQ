@@ -1,1 +1,696 @@
+---------------Important ---------
+Amazon Interview Question - https://www.youtube.com/watch?v=d7pZNZbpdo8&t=22s
+	
+----- Problem 1 ------------
+create table emp_2020
+(
+emp_id int,
+designation varchar(20)
+);
 
+create table emp_2021
+(
+emp_id int,
+designation varchar(20)
+);
+
+
+insert into emp_2020 values (1,'Trainee');
+insert into emp_2020 values (2,'Developer');
+insert into emp_2020 values (3,'Senior Developer');
+insert into emp_2020 values (4,'Manager');
+
+insert into emp_2021 values (1,'Developer'); 
+insert into emp_2021 values (2,'Developer');
+insert into emp_2021 values (3,'Manager');
+insert into emp_2021 values (5,'Trainee');
+
+SELECT * FROM EMP_2020;
+SELECT * FROM EMP_2021;
+
+
+with cte as(
+SELECT 
+    COALESCE(e20.emp_id, e21.emp_id) AS emp_id,
+    e20.designation AS designation_2020,
+    e21.designation AS designation_2021
+FROM 
+    emp_2020 e20
+FULL OUTER JOIN 
+    emp_2021 e21 ON e20.emp_id = e21.emp_id)
+select emp_id,
+case when designation_2020=designation_2021 then 'NOT PROMOTED'
+when designation_2020 is null then 'NEW EMPLOYEE'
+when designation_2021 is null then 'RESIGNED'
+else 'PROMOTED' 
+END as status
+from cte
+
+------- Problem 2 ------------
+create table table_a
+(
+ empid int, empname varchar(50), 
+ salary int
+);
+
+create table table_b
+(
+ empid int, 
+ empname varchar(50), 
+ salary int
+);
+
+insert into table_a values(1,'AA',1000);
+insert into table_a values(2,'BB',300);
+insert into table_b values(2,'BB',400);
+insert into table_b values(3,'CC',100);
+
+SELECT * FROM TABLE_A;
+SELECT * FROM TABLE_B;
+
+with cte as (
+select coalesce(a.empid,b.empid) as empid, a.empname as e1,a.salary as s1,b.empname as e2,b.salary as s2
+from table_a a full outer join table_b b on a.empid=b.empid)
+
+select empid,
+case when e1 is null then e2
+else e1
+end as empname,
+case when s1 is null then s2
+else s1
+end as salary
+from cte
+-----------------problem 3--------------------------
+CREATE TABLE city_distance
+(
+distance INT,
+source VARCHAR(512),
+destination VARCHAR(512)
+);
+
+delete from city_distance;
+INSERT INTO city_distance(distance, source, destination) VALUES ('100', 'New Delhi', 'Panipat');
+INSERT INTO city_distance(distance, source, destination) VALUES ('200', 'Ambala', 'New Delhi');
+INSERT INTO city_distance(distance, source, destination) VALUES ('150', 'Bangalore', 'Mysore');
+INSERT INTO city_distance(distance, source, destination) VALUES ('150', 'Mysore', 'Bangalore');
+INSERT INTO city_distance(distance, source, destination) VALUES ('250', 'Mumbai', 'Pune');
+INSERT INTO city_distance(distance, source, destination) VALUES ('250', 'Pune', 'Mumbai');
+INSERT INTO city_distance(distance, source, destination) VALUES ('2500', 'Chennai', 'Bhopal');
+INSERT INTO city_distance(distance, source, destination) VALUES ('2500', 'Bhopal', 'Chennai');
+INSERT INTO city_distance(distance, source, destination) VALUES ('60', 'Tirupati', 'Tirumala');
+INSERT INTO city_distance(distance, source, destination) VALUES ('80', 'Tirumala', 'Tirupati');
+INSERT INTO city_distance(distance, source, destination) VALUES ('2500', 'x', 'y');
+
+with cte as (select distance,lead(distance) over(partition by distance) as d,
+			 source,lead(source) over(partition by distance) as s1,
+			 destination,lead(destination) over(partition by distance) as d1
+from city_distance)
+
+select * from city_distance
+except
+select distance,source,destination
+from cte where s1 = destination and d1 = source and d = distance
+
+	-----------------problem 4--------------------------
+CREATE TABLE service_status (
+    service_name VARCHAR(50),
+    updated_time TIMESTAMP,
+    status VARCHAR(10)
+);
+INSERT INTO service_status (service_name, updated_time, status) VALUES 
+('hdfs', '2024-03-06 10:00:00', 'up'),
+('hdfs', '2024-03-06 10:01:00', 'up'),
+('hdfs', '2024-03-06 10:02:00', 'down'),
+('hdfs', '2024-03-06 10:03:00', 'down'),
+('hdfs', '2024-03-06 10:04:00', 'down'),
+('hdfs', '2024-03-06 10:05:00', 'down'),
+('hdfs', '2024-03-06 10:06:00', 'down'),
+('hdfs', '2024-03-06 10:07:00', 'up'),
+('hdfs', '2024-03-06 10:08:00', 'up'),
+('hdfs', '2024-03-06 10:09:00', 'down'),
+('hdfs', '2024-03-06 10:10:00', 'down');
+
+with cte as
+(select service_name,updated_time as t1, 
+lead(updated_time) over(partition by status order by updated_time) as t2,status
+-- EXTRACT(MINUTE FROM (lead(updated_time) over(partition by status order by updated_time)- updated_time)) as dif,
+-- row_number() over(partition by updated_time order by updated_time) as rn
+from service_status where status='down'),
+
+cte2 as(select cte.*,
+EXTRACT(MINUTE FROM (t2-(select min(t1) as m from cte))) as di,
+row_number() over(partition by cte.service_name) as r
+from cte),
+
+cte3 as (select service_name,t1,t2,status,(di-r) as x from cte2),
+
+cte4 as (select x,count(*) as c from cte3 group by x),
+
+cte5 as (select cte3.*, case when cte3.x= cte4.x then cte4.c end as t 
+		 from cte3,cte4 where cte4.c>=3)
+		 
+select service_name,min(t1),max(t2),status
+from cte5 where t is not null group by service_name,status
+	
+method-2:
+with cte as (
+select *, lag(status) over(order by updated_time) as prev_status from service_status
+ ),
+cte2 as (select *, 
+sum
+ (
+ case when status='down' and prev_status='up' then 1 
+ when status='up' and prev_status='down' then 1 else 0 end
+ ) over(order by updated_time) 
+ as group_key from cte)
+,
+cte3 as 
+(
+select service_name,min(status) as service_status ,min(updated_time) as start_updated_time,max(updated_time) as end_updated_time 
+from cte2 group by group_key,service_name )
+-- select * from cte3
+select service_name,service_status,start_updated_time,end_updated_time from cte3 
+where extract(minute from (end_updated_time - start_updated_time))>=3;
+
+------------------------------TechTFQ Day1---------------------------------------------
+/* Problem Statement:
+- For pairs of brands in the same year (e.g. apple/samsung/2020 and samsung/apple/2020) 
+    - if custom1 = custom3 and custom2 = custom4 : then keep only one pair
+
+- For pairs of brands in the same year 
+    - if custom1 != custom3 OR custom2 != custom4 : then keep both pairs
+
+- For brands that do not have pairs in the same year : keep those rows as well
+*/
+
+DROP TABLE IF EXISTS brands;
+CREATE TABLE brands 
+(
+    brand1      VARCHAR(20),
+    brand2      VARCHAR(20),
+    year        INT,
+    custom1     INT,
+    custom2     INT,
+    custom3     INT,
+    custom4     INT
+);
+INSERT INTO brands VALUES ('apple', 'samsung', 2020, 1, 2, 1, 2);
+INSERT INTO brands VALUES ('samsung', 'apple', 2020, 1, 2, 1, 2);
+INSERT INTO brands VALUES ('apple', 'samsung', 2021, 1, 2, 5, 3);
+INSERT INTO brands VALUES ('samsung', 'apple', 2021, 5, 3, 1, 2);
+INSERT INTO brands VALUES ('google', NULL, 2020, 5, 9, NULL, NULL);
+INSERT INTO brands VALUES ('oneplus', 'nothing', 2020, 5, 9, 6, 3);
+
+with cte as (select *,
+case when brand1 < brand2 then concat(brand1,brand2,year) 
+else concat(brand2,brand1,year) end as pair from brands),
+cte1 as (select *, row_number() over(partition by pair) as rn from cte)
+select * from cte1 where rn=1 or (custom1<> custom3 and custom2 <> custom4)
+
+------------------------------TechTFQ Day2---------------------------------------------
+A ski resort company is planning to construct a new ski slope using a pre-existing network of
+mountain huts and trails between them. A new slope has to begin at one of the mountain huts,
+have a middle station at another hut connected with the first one by a direct trail, and end at
+the third mountain hut which is also connected by a direct trail to the second hut. The altitude
+of the three huts chosen for constructing the ski slope has to be strictly decreasing.
+
+drop table if exists mountain_huts;
+create table mountain_huts 
+(
+	id 			integer not null unique,
+	name 		varchar(40) not null unique,
+	altitude 	integer not null
+);
+insert into mountain_huts values (1, 'Dakonat', 1900);
+insert into mountain_huts values (2, 'Natisa', 2100);
+insert into mountain_huts values (3, 'Gajantut', 1600);
+insert into mountain_huts values (4, 'Rifat', 782);
+insert into mountain_huts values (5, 'Tupur', 1370);
+
+drop table if exists trails;
+create table trails 
+(
+	hut1 		integer not null,
+	hut2 		integer not null
+);
+insert into trails values (1, 3);
+insert into trails values (3, 2);
+insert into trails values (3, 5);
+insert into trails values (4, 5);
+insert into trails values (1, 5);
+
+-- with tab1 as
+-- (select * from mountain_huts),
+-- tab2 as
+-- (select id as id1,name as name1,altitude as alt1 
+--  from mountain_huts m join trails t on t.hut2=m.id)
+-- select * from tab1 join tab2 on tab1.id=tab2.id1
+with cte as(select m.id as h1,m.name as p1,
+m.altitude as a1,t.hut2 as h2 from mountain_huts m join trails t on m.id=t.hut1),
+cte1 as (select c.*,m1.name as p2,m1.altitude as a2,
+case when c.a1 > m1.altitude then 1 else 0 end as ref
+from cte c join mountain_huts m1 on m1.id=c.h2),
+cte2 as(select
+case when ref=1 then h1 else h2 end as hut1,
+case when ref=1 then p1 else p2 end as start,
+case when ref=1 then a1 else a2 end as a1,
+case when ref=1 then h2 else h1 end as hut2,
+case when ref=1 then p2 else p1 end as middle,
+case when ref=1 then a2 else a1 end as a2
+from cte1)
+select c1.hut1,c1.start,c1.hut2,c1.middle,c2.hut2 as hut3,c2.middle as destination
+from cte2 c1 join cte2 c2 on c1.hut2=c2.hut1
+
+
+-- SOLUTION
+with cte_trails1 as
+		(select t1.hut1 as start_hut, h1.name as start_hut_name
+		 ,h1.altitude as start_hut_altitude, t1.hut2 as end_hut
+		from mountain_huts h1
+		join trails t1 on t1.hut1 = h1.id),
+	cte_trails2 as
+		(select t2.*, h2.name as end_hut_name, h2.altitude as end_hut_altitude
+		, case when start_hut_altitude > h2.altitude then 1 else 0 end as altitude_flag
+		from cte_trails1 t2
+		join mountain_huts h2 on h2.id = t2.end_hut),
+	cte_final as
+		(select case when altitude_flag = 1 then start_hut else end_hut end as start_hut
+		, case when altitude_flag = 1 then start_hut_name else end_hut_name end as start_hut_name
+		, case when altitude_flag = 1 then end_hut else start_hut end as end_hut
+		, case when altitude_flag = 1 then end_hut_name else start_hut_name end as end_hut_name
+		from cte_trails2)
+-- select * from cte_trails2
+select c1.start_hut_name as startpt
+, c1.end_hut_name as middlept
+, c2.end_hut_name as endpt
+from cte_final c1
+join cte_final c2 on c1.end_hut = c2.start_hut;
+
+------------------------------TechTFQ Day3---------------------------------------------
+
+------------------------------TechTFQ Day4---------------------------------------------
+drop table if exists Q4_data;
+create table Q4_data
+(
+	id			int,
+	name		varchar(20),
+	location	varchar(20)
+);
+insert into Q4_data values(1,null,null);
+insert into Q4_data values(2,'David',null);
+insert into Q4_data values(3,null,'London');
+insert into Q4_data values(4,null,null);
+insert into Q4_data values(5,'David',null);
+
+select * from Q4_data;
+
+select min(id) as id,max(name) as name,max(location) as location from Q4_data;
+select max(id) as id,max(name) as name,max(location) as location from Q4_data;
+
+------------------------------TechTFQ Day5---------------------------------------------
+------------------------------TechTFQ Day6---------------------------------------------
+------------------------------TechTFQ Day7---------------------------------------------
+
+--------------------- sql 8 by TechTFQ ----------------------
+drop table if exists job_skills;
+create table job_skills
+(
+	row_id		int,
+	job_role	varchar(20),
+	skills		varchar(20)
+);
+insert into job_skills values (1, 'Data Engineer', 'SQL');
+insert into job_skills values (2, null, 'Python');
+insert into job_skills values (3, null, 'AWS');
+insert into job_skills values (4, null, 'Snowflake');
+insert into job_skills values (5, null, 'Apache Spark');
+insert into job_skills values (6, 'Web Developer', 'Java');
+insert into job_skills values (7, null, 'HTML');
+insert into job_skills values (8, null, 'CSS');
+insert into job_skills values (9, 'Data Scientist', 'Python');
+insert into job_skills values (10, null, 'Machine Learning');
+insert into job_skills values (11, null, 'Deep Learning');
+insert into job_skills values (12, null, 'Tableau');
+
+select * from job_skills;
+
+with cte as (select *,
+sum(case when job_role is not null then 1 else 0 end) over(order by row_id) as new
+from job_skills)
+select row_id,first_value(job_role) over(partition by new order by row_id) as job_role,skills
+from cte
+
+-- method 2 using recursive cte
+with recursive cte as (
+select * from job_skills where row_id=1
+union
+select js.row_id, coalesce(js.job_role,cte.job_role),js.skills from cte join job_skills js on js.row_id=cte.row_id+1)
+select * from cte
+
+--------------------SQL 9 TechTFQ------------------------------------------
+drop TABLE if exists orders;
+CREATE TABLE orders 
+(
+	customer_id 	INT,
+	dates 			DATE,
+	product_id 		INT
+);
+INSERT INTO orders VALUES
+(1, '2024-02-18', 101),
+(1, '2024-02-18', 102),
+(1, '2024-02-19', 101),
+(1, '2024-02-19', 103),
+(2, '2024-02-18', 104),
+(2, '2024-02-18', 105),
+(2, '2024-02-19', 101),
+(2, '2024-02-19', 106); 
+
+
+with cte as(select *,lead(product_id) over(partition by dates,customer_id) as ld from orders)
+(select dates,cast(product_id as text) from orders
+union
+select dates,case 
+ when product_id<=ld then concat(product_id,',',ld)
+ else concat(ld,',',product_id) end
+ as projects_id from cte where ld is not null)
+order by 1,2
+
+-- Solution:
+select dates, cast(product_id as varchar) as products 
+from orders
+union
+select dates, string_agg(cast(product_id as varchar),',') as products
+from orders
+group by customer_id, dates
+order by dates, products;
+
+------------------------------TechTFQ Day10---------------------------------------------
+
+--------------------SQL 11 TechTFQ-----------------------------------------
+drop table if exists hotel_ratings;
+create table hotel_ratings
+(
+	hotel 		varchar(30),
+	year		int,
+	rating 		decimal
+);
+insert into hotel_ratings values('Radisson Blu', 2020, 4.8);
+insert into hotel_ratings values('Radisson Blu', 2021, 3.5);
+insert into hotel_ratings values('Radisson Blu', 2022, 3.2);
+insert into hotel_ratings values('Radisson Blu', 2023, 3.8);
+insert into hotel_ratings values('InterContinental', 2020, 4.2);
+insert into hotel_ratings values('InterContinental', 2021, 4.5);
+insert into hotel_ratings values('InterContinental', 2022, 1.5);
+insert into hotel_ratings values('InterContinental', 2023, 3.8);
+
+select * from hotel_ratings;
+
+with cte as (select *,
+round(avg(rating) over(partition by hotel),2) as avg_rt,
+round(stddev(rating) over(partition by hotel),2) as std
+-- if we place order by year the results will vary
+from hotel_ratings),
+cte1 as(select *,round(abs(rating-avg_rt)/std,2) as final from cte)
+select hotel,year,rating from cte1 where final<1 
+
+------------------ Amazon Interview Question from TechTFQ ------------------------------------
+https://www.youtube.com/watch?v=d7pZNZbpdo8&t=22s
+drop table if exists emp_attendance;
+create table emp_attendance
+(
+	employee 	varchar(10),
+	dates 		date,
+	status 		varchar(20)
+);
+insert into emp_attendance values('A1', '2024-01-01', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-02', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-03', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-04', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-05', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-06', 'PRESENT');
+insert into emp_attendance values('A1', '2024-01-07', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-08', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-09', 'ABSENT');
+insert into emp_attendance values('A1', '2024-01-010', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-06', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-07', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-08', 'ABSENT');
+insert into emp_attendance values('A2', '2024-01-09', 'PRESENT');
+insert into emp_attendance values('A2', '2024-01-010', 'ABSENT');
+
+select * from emp_attendance;
+
+with cte as (select *,
+lag(status) over(partition by employee order by dates) as lg
+from emp_attendance),
+cte1 as(select *,sum(case when (status='ABSENT' and lg='PRESENT') then 1 
+when (status='PRESENT' and lg='ABSENT') then 1 else 0 end) 
+over(partition by employee order by dates) as flag from cte)
+
+select employee,min(dates) as from_date,max(dates) as to_date,status 
+from cte1 group by employee,flag,status order by 1,2,3
+	
+------------------------------TechTFQ Day12---------------------------------------------
+
+---------------------TechTFQ 13--------------------------------------------
+-- Find out the no of employees managed by each manager.
+
+drop table if exists employee_managers;
+create table employee_managers
+(
+	id			int,
+	name		varchar(20),
+	manager 	int
+);
+insert into employee_managers values (1, 'Sundar', null);
+insert into employee_managers values (2, 'Kent', 1);
+insert into employee_managers values (3, 'Ruth', 1);
+insert into employee_managers values (4, 'Alison', 1);
+insert into employee_managers values (5, 'Clay', 2);
+insert into employee_managers values (6, 'Ana', 2);
+insert into employee_managers values (7, 'Philipp', 3);
+insert into employee_managers values (8, 'Prabhakar', 4);
+insert into employee_managers values (9, 'Hiroshi', 4);
+insert into employee_managers values (10, 'Jeff', 4);
+insert into employee_managers values (11, 'Thomas', 1);
+insert into employee_managers values (12, 'John', 15);
+insert into employee_managers values (13, 'Susan', 15);
+insert into employee_managers values (14, 'Lorraine', 15);
+insert into employee_managers values (15, 'Larry', 1);
+
+select * from employee_managers;
+
+select e2.name,count(e2.name) from employee_managers e1 
+join employee_managers e2 on e1.manager=e2.id
+group by e2.name order by 2 desc
+
+------------------------------TechTFQ Day14---------------------------------------------
+
+----------------TechTFQ Day-15 (Very Imp & HARD)-------------------------------
+DROP TABLE IF EXISTS Friends;
+
+CREATE TABLE Friends
+(
+	Friend1 	VARCHAR(10),
+	Friend2 	VARCHAR(10)
+);
+INSERT INTO Friends VALUES ('Jason','Mary');
+INSERT INTO Friends VALUES ('Mike','Mary');
+INSERT INTO Friends VALUES ('Mike','Jason');
+INSERT INTO Friends VALUES ('Susan','Jason');
+INSERT INTO Friends VALUES ('John','Mary');
+INSERT INTO Friends VALUES ('Susan','Mary');
+
+select * from Friends;
+
+with cte as(select friend1,friend2 from friends
+union all
+select friend2,friend1 from friends)
+select distinct f.*,count(c1.friend2) as mutual
+from friends f
+left join cte c1 on f.friend1=c1.friend1
+and c1.friend2 in (
+	select friend2
+	from cte c2 where f.friend2=c2.friend1) group by 1,2 order by 1 
+
+------------------------------TechTFQ Day16---------------------------------------------
+-- Given table contains reported covid cases in 2020. 
+-- Calculate the percentage increase in covid cases each month versus cumulative cases as of the prior month.
+-- Return the month number, and the percentage increase rounded to one decimal. Order the result by the month.
+
+drop table if exists covid_cases;
+create table covid_cases
+(
+	cases_reported	int,
+	dates			date	
+);
+insert into covid_cases values(20124,to_date('10/01/2020','DD/MM/YYYY'));
+insert into covid_cases values(40133,to_date('15/01/2020','DD/MM/YYYY'));
+insert into covid_cases values(65005,to_date('20/01/2020','DD/MM/YYYY'));
+insert into covid_cases values(30005,to_date('08/02/2020','DD/MM/YYYY'));
+insert into covid_cases values(35015,to_date('19/02/2020','DD/MM/YYYY'));
+insert into covid_cases values(15015,to_date('03/03/2020','DD/MM/YYYY'));
+insert into covid_cases values(35035,to_date('10/03/2020','DD/MM/YYYY'));
+insert into covid_cases values(49099,to_date('14/03/2020','DD/MM/YYYY'));
+insert into covid_cases values(84045,to_date('20/03/2020','DD/MM/YYYY'));
+insert into covid_cases values(100106,to_date('31/03/2020','DD/MM/YYYY'));
+insert into covid_cases values(17015,to_date('04/04/2020','DD/MM/YYYY'));
+insert into covid_cases values(36035,to_date('11/04/2020','DD/MM/YYYY'));
+insert into covid_cases values(50099,to_date('13/04/2020','DD/MM/YYYY'));
+insert into covid_cases values(87045,to_date('22/04/2020','DD/MM/YYYY'));
+insert into covid_cases values(101101,to_date('30/04/2020','DD/MM/YYYY'));
+insert into covid_cases values(40015,to_date('01/05/2020','DD/MM/YYYY'));
+insert into covid_cases values(54035,to_date('09/05/2020','DD/MM/YYYY'));
+insert into covid_cases values(71099,to_date('14/05/2020','DD/MM/YYYY'));
+insert into covid_cases values(82045,to_date('21/05/2020','DD/MM/YYYY'));
+insert into covid_cases values(90103,to_date('25/05/2020','DD/MM/YYYY'));
+insert into covid_cases values(99103,to_date('31/05/2020','DD/MM/YYYY'));
+insert into covid_cases values(11015,to_date('03/06/2020','DD/MM/YYYY'));
+insert into covid_cases values(28035,to_date('10/06/2020','DD/MM/YYYY'));
+insert into covid_cases values(38099,to_date('14/06/2020','DD/MM/YYYY'));
+insert into covid_cases values(45045,to_date('20/06/2020','DD/MM/YYYY'));
+insert into covid_cases values(36033,to_date('09/07/2020','DD/MM/YYYY'));
+insert into covid_cases values(40011,to_date('23/07/2020','DD/MM/YYYY'));	
+insert into covid_cases values(25001,to_date('12/08/2020','DD/MM/YYYY'));
+insert into covid_cases values(29990,to_date('26/08/2020','DD/MM/YYYY'));	
+insert into covid_cases values(20112,to_date('04/09/2020','DD/MM/YYYY'));	
+insert into covid_cases values(43991,to_date('18/09/2020','DD/MM/YYYY'));	
+insert into covid_cases values(51002,to_date('29/09/2020','DD/MM/YYYY'));	
+insert into covid_cases values(26587,to_date('25/10/2020','DD/MM/YYYY'));	
+insert into covid_cases values(11000,to_date('07/11/2020','DD/MM/YYYY'));	
+insert into covid_cases values(35002,to_date('16/11/2020','DD/MM/YYYY'));	
+insert into covid_cases values(56010,to_date('28/11/2020','DD/MM/YYYY'));	
+insert into covid_cases values(15099,to_date('02/12/2020','DD/MM/YYYY'));	
+insert into covid_cases values(38042,to_date('11/12/2020','DD/MM/YYYY'));	
+insert into covid_cases values(73030,to_date('26/12/2020','DD/MM/YYYY'));	
+
+
+select * from covid_cases;
+
+with cte as 
+		(select extract(month from dates) as month
+		, sum(cases_reported) as monthly_cases
+		from covid_cases
+		group by extract(month from dates)),
+	cte_final as
+		(select *
+		, sum(monthly_cases) over(order by month) as total_cases
+		from cte)
+select month
+, case when month > 1 
+			then cast(round((monthly_cases/lag(total_cases) over(order by month))*100,1) as varchar)
+	   else '-' end as percentage_increase
+from cte_final;
+
+------------------------------TechTFQ Day17---------------------------------------------
+-- Given is user login table for , identify dates where a user has logged in for 5 or more consecutive days.
+-- Return the user id, start date, end date and no of consecutive days, sorting based on user id.
+-- If a user logged in consecutively 5 or more times but not spanning 5 days then they should be excluded.
+
+/*
+-- Output:
+USER_ID		START_DATE		END_DATE		CONSECUTIVE_DAYS
+1			10/03/2024		14/03/2024		5
+1 			25/03/2024		30/03/2024		6
+3 			01/03/2024		05/03/2024		5
+*/
+
+
+-- PostgreSQL Dataset
+drop table if exists user_login;
+create table user_login
+(
+	user_id		int,
+	login_date	date
+);
+insert into user_login values(1, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('06/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('10/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('11/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('12/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('13/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('14/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(1, to_date('20/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('25/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('26/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('27/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('28/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('29/03/2024','dd/mm/yyyy'));
+insert into user_login values(1, to_date('30/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(2, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(2, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(2, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(2, to_date('04/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(3, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(3, to_date('05/03/2024','dd/mm/yyyy'));
+
+insert into user_login values(4, to_date('01/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('02/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('03/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('04/03/2024','dd/mm/yyyy'));
+insert into user_login values(4, to_date('04/03/2024','dd/mm/yyyy'));
+
+select * from user_login;
+
+with cte0 as (select distinct user_id,login_date from user_login order by 1),
+cte as(select *,extract(day from login_date)-
+			row_number() over(partition by user_id order by login_date) as ref
+from cte0),
+cte1 as(select *,count(ref) over(partition by user_id,ref) as total from cte)
+select user_id,min(login_date) as start,max(login_date) as end,total 
+from cte1 where total>=5 group by user_id,total
+
+--------------------TechTFQ Day18----------------------------------------------------
+-- Find out the employees who attended all compan events
+
+drop table if exists employees;
+create table employees
+(
+	id			int,
+	name		varchar(50)
+);
+insert into employees values(1, 'Lewis');
+insert into employees values(2, 'Max');
+insert into employees values(3, 'Charles');
+insert into employees values(4, 'Sainz');
+
+
+drop table if exists events;
+create table events
+(
+	event_name		varchar(50),
+	emp_id			int,
+	dates			date
+);
+insert into events values('Product launch', 1, to_date('01-03-2024','DD-MM-YYYY'));
+insert into events values('Product launch', 3, to_date('01-03-2024','DD-MM-YYYY'));
+insert into events values('Product launch', 4, to_date('01-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 2, to_date('02-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 2, to_date('03-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 3, to_date('02-03-2024','DD-MM-YYYY'));
+insert into events values('Conference', 4, to_date('02-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 3, to_date('04-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 2, to_date('04-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 4, to_date('04-03-2024','DD-MM-YYYY'));
+insert into events values('Training', 4, to_date('05-03-2024','DD-MM-YYYY'));
+
+select * from employees;
+select * from events;
+
+with cte as(select distinct event_name,emp_id,name
+from events t1 join employees t2 on t1.emp_id=t2.id order by 2),
+cte1 as(select *,count(*) over(partition by emp_id,name) as cnt from cte)
+select distinct name as emp_name,cnt from cte1 
+where cnt=(select count(distinct(event_name)) from events)
+	
