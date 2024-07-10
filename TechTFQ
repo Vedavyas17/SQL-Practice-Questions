@@ -693,4 +693,41 @@ from events t1 join employees t2 on t1.emp_id=t2.id order by 2),
 cte1 as(select *,count(*) over(partition by emp_id,name) as cnt from cte)
 select distinct name as emp_name,cnt from cte1 
 where cnt=(select count(distinct(event_name)) from events)
-	
+
+--------------------TechTFQ Day19----------------------------------------------------
+-- Given table showcases details of pizza delivery order for the year of 2023.
+-- If an order is delayed then the whole order is given for free. Any order that takes 30 minutes more than the expected time is considered as delayed order. 
+-- Identify the percentage of delayed order for each month and also display the total no of free pizzas given each month.
+
+use world;
+DROP TABLE IF EXISTS pizza_delivery;
+CREATE TABLE pizza_delivery 
+(
+	order_id 			INT,
+	order_time 			TIMESTAMP,
+	expected_delivery 	TIMESTAMP,
+	actual_delivery 	TIMESTAMP,
+	no_of_pizzas 		INT,
+	price 				DECIMAL
+);
+
+
+-- Data to this table can be found in CSV File
+
+select * from pizza_delivery;
+
+with cte as(select *,
+count(order_id) over(partition by extract(month from order_time)) as total,
+sum(no_of_pizzas) over(partition by extract(month from order_time)) as total_pizza,
+date_format(order_time, '%b-%y') as month,timediff(actual_delivery,expected_delivery) as delay,
+case when actual_delivery-expected_delivery <= 0 then 'late' else 'ontime' end as status
+from pizza_delivery),
+
+-- select * from cte where month=1 and status= 'late';
+
+cte1 as (select *,
+total-count(order_id) over(partition by month,status) as late_orders,
+total_pizza-sum(no_of_pizzas) over(partition by month,status) as free_pizza
+ from cte )
+ 
+ select distinct month,round(100*(late_orders/total),2) as delay_perc, free_pizza from cte1 where status='late'
