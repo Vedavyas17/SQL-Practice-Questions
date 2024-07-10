@@ -106,3 +106,27 @@ with cte as(select *,row_number() over(partition by lower(email_id)) as ref from
 cte1 as (select *,case when ref>1 and email_id<>lower(email_id) then 0 else 1 end as x
 from cte) 
 select employee_id,employee_name, email_id from cte1 where x=1
+
+----------------Ankit Bansal ICC Tournament--------------------------------------------
+create table icc_world_cup
+(
+Team_1 Varchar(20),
+Team_2 Varchar(20),
+Winner Varchar(20)
+);
+INSERT INTO icc_world_cup values('India','SL','India');
+INSERT INTO icc_world_cup values('SL','Aus','Aus');
+INSERT INTO icc_world_cup values('SA','Eng','Eng');
+INSERT INTO icc_world_cup values('Eng','NZ','NZ');
+INSERT INTO icc_world_cup values('Aus','India','India');
+
+select * from icc_world_cup;
+
+with cte as (select team_1,team_2,winner from icc_world_cup
+union all
+select team_2,team_1,winner from icc_world_cup),
+cte1 as(select team_1,count(team_1) as played from cte group by team_1),
+cte2 as(select winner,count(winner) as wins from icc_world_cup group by winner)
+select cte1.team_1 as team,played,
+coalesce(wins,0) as wins,(cte1.played-coalesce(wins,0)) as loses
+from cte1 left join cte2 on cte1.team_1=cte2.winner order by 3 desc
